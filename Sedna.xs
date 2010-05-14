@@ -5,8 +5,10 @@
 #include "ppport.h"
 
 #include <libsedna.h>
-
+#include <string.h>
 #include "const-c.inc"
+
+#define BUFFER_LENGTH 512
 
 typedef struct SednaConnection SednaConnection;
 
@@ -270,10 +272,11 @@ sedna_xs_transactionStatus(conn)
          RETVAL
 
 void
-sedna_xs_execute(conn, query)
+sedna_xs_execute(conn, svquery)
      SednaConnection* conn
-     char* query
+     SV* svquery
      CODE:
+         char* query = SvPVutf8_nolen(svquery);
          int ret = SEexecute(conn, query);
          if (ret != SEDNA_QUERY_SUCCEEDED &&
              ret != SEDNA_UPDATE_SUCCEEDED &&
@@ -329,12 +332,46 @@ sedna_xs_next(conn)
      OUTPUT:
          RETVAL
 
+SV*
+sedna_xs_getItem(conn)
+     SednaConnection* conn
+     CODE:
+         char buffer[BUFFER_LENGTH];
+         char* result = NULL;
+         int curlen = 0;
+         int ret = 0;
+         while (ret = SEgetData(conn, buffer, BUFFER_LENGTH)) {
+             if (ret < 0) {
+                 croak("error at SEgetData: %s", SEgetLastErrorMsg(conn));
+             } else if (ret == 0) {
+                 break;
+             } else {
+                 result = realloc(result, curlen + ret);
+                 if (!result) {
+                    croak("error alocating memory for xml.\n");
+                 }
+                 memcpy((char*)((int)result + curlen), buffer, ret); 
+                 curlen += ret;
+             }
+         }
+         if (result) {
+             SV* svret = newSVpvn(result, curlen);
+             SvUTF8_on(svret);
+             RETVAL = svret;
+             free(result);
+         } else {
+             RETVAL = &PL_sv_undef;
+         }
+     OUTPUT:
+         RETVAL
+
 int
 sedna_xs_getData(conn, svbuff, reqlen)
      SednaConnection* conn
      SV* svbuff
      int reqlen
      CODE:
+         SvUTF8_off(svbuff);
          char* buff = SvGROW(svbuff, reqlen+10);
          int ret = SEgetData(conn, buff, reqlen);
          if (ret < 0) {
@@ -353,10 +390,10 @@ sedna_xs_loadData(conn, svbuff, docname, svcolname)
      SV* svcolname
      CODE:
          int svlen;
-         char* buff = SvPV(svbuff, svlen);
+         char* buff = SvPVutf8(svbuff, svlen);
          char* colname = NULL;
          if (SvOK(svcolname)) {
-            colname = SvPV_nolen(svcolname);
+            colname = SvPVutf8_nolen(svcolname);
          }
          int ret = SEloadData(conn, buff, svlen, docname, colname);
          if (ret != SEDNA_DATA_CHUNK_LOADED) {
