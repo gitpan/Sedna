@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Sedna
-version:            0.002
+version:            0.003
 abstract:           Driver to connect on the Sedna XML database
 author:
     - Daniel Ruoso <daniel@ruoso.com>
@@ -9,13 +9,13 @@ distribution_type:  module
 configure_requires:
     ExtUtils::MakeMaker:  0
 build_requires:
-    ExtUtils::MakeMaker:  0
+    Alien::Sedna:  0
 requires:  {}
 no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.54
+generated_by:       ExtUtils::MakeMaker version 6.56
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4
